@@ -21,13 +21,13 @@ async function main() {
   if (examErr) throw examErr;
   const examId = existingExam.id;
 
-  // Kohne demo neticelerini (27001-27004, uydurma data) temizle
-  const { error: delErr } = await supabase.from("results").delete().eq("exam_id", examId).lt("is_nomresi", "27100");
+  // Kohne 27xxx yer-tutan neticelerini temizle - PDF-in oz is nomreleri istifade olunur
+  const { error: delErr } = await supabase.from("results").delete().eq("exam_id", examId).gte("is_nomresi", "27000");
   if (delErr) throw delErr;
 
-  const rows = parsed.map((p, i) => ({
+  const rows = parsed.map((p) => ({
     exam_id: examId,
-    is_nomresi: String(27001 + i),
+    is_nomresi: p.origIsNomresi,
     soyadi: p.soyadi,
     adi: p.adi,
     sinif: p.sinif,
@@ -42,9 +42,9 @@ async function main() {
   const { error } = await supabase.from("results").upsert(rows, { onConflict: "exam_id,is_nomresi" });
   if (error) throw error;
 
-  console.log("Seeded", rows.length, "real results");
+  console.log("Seeded", rows.length, "real results with original iş nömrələri");
   for (const r of rows) {
-    console.log(r.is_nomresi, "->", r.soyadi, r.adi, r.umumi_bal);
+    console.log(r.is_nomresi, "->", r.umumi_bal);
   }
 }
 
