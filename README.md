@@ -1,36 +1,28 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# QTM Nəticə
 
-## Getting Started
+İmtahan nəticələrinin iş nömrəsi ilə axtarışı üçün veb tətbiq.
 
-First, run the development server:
+## Yerli işə salma
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+http://localhost:3000 ünvanında açılır.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Struktur
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `src/app/page.tsx` — axtarış səhifəsi (imtahan seçimi + iş nömrəsi)
+- `src/components/ResultSheet.tsx` — nəticə vərəqi görünüşü, PDF/şəkil export
+- `src/lib/mockData.ts` — nümunə məlumatlar (MVP demo üçün). Real məlumatlar Supabase-ə keçəndə bu fayl API sorğusu ilə əvəz olunacaq.
 
-## Learn More
+## Nümunə iş nömrələri (demo)
 
-To learn more about Next.js, take a look at the following resources:
+- 27001, 27002, 27003
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Növbəti addımlar
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Supabase layihəsi qurulub `exams` / `results` cədvəlləri yaradılacaq
+- Admin panelində CSV yükləmə əlavə olunacaq
+- Vercel-ə deploy
