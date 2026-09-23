@@ -1,27 +1,42 @@
 "use client";
 
-import { useState } from "react";
-import { exams, findResult } from "@/lib/mockData";
-import type { ExamResult } from "@/lib/types";
+import { useEffect, useState } from "react";
+import { listExams, findResult } from "@/lib/db";
+import type { Exam, ExamResult } from "@/lib/types";
 import ResultSheet from "@/components/ResultSheet";
 
 export default function Home() {
-  const [examId, setExamId] = useState(exams[0]?.id ?? "");
+  const [exams, setExams] = useState<Exam[]>([]);
+  const [examId, setExamId] = useState("");
   const [isNomresi, setIsNomresi] = useState("");
   const [result, setResult] = useState<ExamResult | null>(null);
-  const [status, setStatus] = useState<"idle" | "not-found" | "found">("idle");
+  const [status, setStatus] = useState<"idle" | "loading" | "not-found" | "found" | "error">("idle");
 
-  function handleSubmit(e: React.FormEvent) {
+  useEffect(() => {
+    listExams()
+      .then((data) => {
+        setExams(data);
+        if (data[0]) setExamId(data[0].id);
+      })
+      .catch(() => setStatus("error"));
+  }, []);
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!examId || !isNomresi.trim()) return;
 
-    const found = findResult(examId, isNomresi);
-    if (found) {
-      setResult(found);
-      setStatus("found");
-    } else {
-      setResult(null);
-      setStatus("not-found");
+    setStatus("loading");
+    try {
+      const found = await findResult(examId, isNomresi);
+      if (found) {
+        setResult(found);
+        setStatus("found");
+      } else {
+        setResult(null);
+        setStatus("not-found");
+      }
+    } catch {
+      setStatus("error");
     }
   }
 
@@ -56,6 +71,7 @@ export default function Home() {
             onChange={(e) => setExamId(e.target.value)}
             className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#17213b] outline-none focus:border-orange-300 sm:w-56"
           >
+            {exams.length === 0 && <option value="">İmtahan seçin</option>}
             {exams.map((ex) => (
               <option key={ex.id} value={ex.id}>
                 {ex.name}
@@ -74,9 +90,10 @@ export default function Home() {
 
           <button
             type="submit"
-            className="w-full whitespace-nowrap rounded-xl bg-gradient-to-r from-orange-500 to-orange-400 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 sm:w-auto"
+            disabled={status === "loading"}
+            className="w-full whitespace-nowrap rounded-xl bg-gradient-to-r from-orange-500 to-orange-400 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:opacity-60 sm:w-auto"
           >
-            Daxil ol &nbsp;→
+            {status === "loading" ? "Axtarılır…" : <>Daxil ol &nbsp;→</>}
           </button>
         </form>
 
@@ -85,9 +102,12 @@ export default function Home() {
             Bu iş nömrəsi üzrə nəticə tapılmadı, ya da nəticələr hələ elan olunmayıb.
           </p>
         )}
+        {status === "error" && (
+          <p className="mt-4 text-center text-sm text-red-500">Xəta baş verdi, bir az sonra yenidən cəhd edin.</p>
+        )}
       </div>
 
-      {status === "found" && result && (
+      {status === "found" && result && selectedExam && (
         <div className="relative z-10 mt-10 flex w-full justify-center">
           <ResultSheet exam={selectedExam} result={result} />
         </div>
