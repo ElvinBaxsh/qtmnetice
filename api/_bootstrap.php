@@ -1,6 +1,17 @@
 <?php
 declare(strict_types=1);
 
+// Xəta detalları istifadəçiyə göstərilmir, yalnız server loguna yazılır
+ini_set('display_errors', '0');
+set_exception_handler(function (Throwable $e): void {
+    error_log('API error: ' . $e->getMessage());
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: application/json; charset=utf-8');
+    }
+    echo json_encode(['error' => 'server']);
+});
+
 $config = require __DIR__ . '/config.php';
 
 header('Content-Type: application/json; charset=utf-8');

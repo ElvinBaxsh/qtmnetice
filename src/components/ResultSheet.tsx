@@ -36,9 +36,51 @@ function QuestionTile({ q }: { q: QuestionAnswer }) {
   );
 }
 
+// Sətir ikonları (PDF-dəki kimi). Rəng birbaşa yazılıb — html2canvas currentColor-u etibarlı çəkmir
+const ICON = "#480060";
+
+function RowIcon({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <svg
+      role="img"
+      aria-label={label}
+      viewBox="0 0 24 24"
+      className="mx-auto h-4 w-4"
+      fill="none"
+      stroke={ICON}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <title>{label}</title>
+      {children}
+    </svg>
+  );
+}
+
+const KeyIcon = () => (
+  <RowIcon label="Açar">
+    <circle cx="7.5" cy="15.5" r="4.5" />
+    <path d="M10.7 12.3 20 3m-4 4 3 3m-5-1 2 2" />
+  </RowIcon>
+);
+
+const AnswerIcon = () => (
+  <RowIcon label="Cavab">
+    <circle cx="12" cy="12" r="9" />
+    <circle cx="12" cy="12" r="4" fill={ICON} stroke="none" />
+  </RowIcon>
+);
+
+const ResultIcon = () => (
+  <RowIcon label="Nəticə">
+    <path d="M12 4v10M7 9h10M7 19h10" />
+  </RowIcon>
+);
+
 // Kompüter (lg+): klassik cədvəl — bu enlikdə tam sığır, scroll yoxdur
 function SectionTable({ section }: { section: ExamResult["sections"][number] }) {
-  const rowLabel = "border-r border-brand-100 px-2 py-1.5 text-left font-medium text-gray-500";
+  const rowLabel = "w-10 border-r border-brand-100 px-2 py-1.5 text-center font-medium";
   const cell = "border-r border-brand-50 px-1 py-1.5 last:border-r-0";
 
   return (
@@ -47,7 +89,7 @@ function SectionTable({ section }: { section: ExamResult["sections"][number] }) 
       <table className="w-full text-center text-xs">
         <tbody>
           <tr className="bg-brand-50 text-brand-700">
-            <td className={`${rowLabel} w-16 text-brand-700`}>№</td>
+            <td className={`${rowLabel} text-brand-700`}>№</td>
             {section.questions.map((q) => (
               <td key={q.no} className={`${cell} font-semibold`}>
                 {q.no}
@@ -55,7 +97,9 @@ function SectionTable({ section }: { section: ExamResult["sections"][number] }) 
             ))}
           </tr>
           <tr>
-            <td className={rowLabel}>Açar</td>
+            <td className={rowLabel}>
+              <KeyIcon />
+            </td>
             {section.questions.map((q) => (
               <td key={q.no} className={`${cell} whitespace-nowrap text-gray-600`}>
                 {q.key}
@@ -63,7 +107,9 @@ function SectionTable({ section }: { section: ExamResult["sections"][number] }) 
             ))}
           </tr>
           <tr className="bg-brand-50/40">
-            <td className={rowLabel}>Cavab</td>
+            <td className={rowLabel}>
+              <AnswerIcon />
+            </td>
             {section.questions.map((q) => (
               <td key={q.no} className={`${cell} whitespace-nowrap font-semibold text-brand-900`}>
                 {q.answer || "–"}
@@ -71,7 +117,9 @@ function SectionTable({ section }: { section: ExamResult["sections"][number] }) 
             ))}
           </tr>
           <tr>
-            <td className={rowLabel}>Nəticə</td>
+            <td className={rowLabel}>
+              <ResultIcon />
+            </td>
             {section.questions.map((q) => {
               const style = TONE_STYLES[toneOf(q)];
               return (
