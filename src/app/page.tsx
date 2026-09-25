@@ -13,6 +13,28 @@ function splitExamName(name: string): [string, string] {
   return rest.length ? [org, rest.join(" — ")] : ["", name];
 }
 
+// Son nəticə yalnız bu tabda saxlanır: refresh-də qalır, tab bağlananda silinir
+const STORAGE_KEY = "qtm-son-netice";
+type Saved = { examName: string; no: string; result: LookupResult };
+
+function loadSaved(): Saved | null {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as Saved) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveResult(value: Saved | null) {
+  try {
+    if (value) sessionStorage.setItem(STORAGE_KEY, JSON.stringify(value));
+    else sessionStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // brauzer yaddaşı bağlıdırsa (məs. gizli rejim) sadəcə saxlamırıq
+  }
+}
+
 export default function Home() {
   // Yalnız ən son dərc olunmuş imtahan göstərilir (API seçir)
   const [exam, setExam] = useState<Exam | null>(null);
@@ -22,17 +44,52 @@ export default function Home() {
   const [status, setStatus] = useState<"idle" | "loading" | "not-found" | "found" | "error" | "rate-limited">("idle");
 
   const resultRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  // Refresh-dən sonra bərpa olunan nəticəyə sürüşdürmürük — brauzer öz mövqeyini saxlayır
+  const skipScrollRef = useRef(false);
 
   // Nəticə tapılanda ona sürüşdür (telefonda forma ekranı tutur)
   useEffect(() => {
-    if (status === "found") resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (status !== "found") return;
+    if (skipScrollRef.current) {
+      skipScrollRef.current = false;
+      return;
+    }
+    resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [status, result]);
 
   useEffect(() => {
     getCurrentExam()
-      .then(setExam)
+      .then((current) => {
+        setExam(current);
+        const saved = loadSaved();
+        // Başqa imtahanın köhnə nəticəsini göstərmirik
+        if (current && saved && saved.examName === current.name) {
+          skipScrollRef.current = true;
+          setIsNomresi(saved.no);
+          setSearchedNo(saved.no);
+          setResult(saved.result);
+          setStatus("found");
+        } else if (saved) {
+          saveResult(null);
+        }
+      })
       .catch(() => setStatus("error"));
   }, []);
+
+  function handleClear() {
+    setIsNomresi("");
+    setResult(null);
+    setSearchedNo("");
+    setStatus("idle");
+    saveResult(null);
+    inputRef.current?.focus();
+  }
+
+  function handleNewSearch() {
+    handleClear();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,6 +102,7 @@ export default function Home() {
       setResult(found);
       setSearchedNo(no);
       setStatus(found ? "found" : "not-found");
+      saveResult(found ? { examName: exam.name, no, result: found } : null);
     } catch (err) {
       setResult(null);
       setStatus(err instanceof RateLimitError ? "rate-limited" : "error");
@@ -124,6 +182,7 @@ export default function Home() {
                 <path d="M4.5 20c1.2-3.6 4-5.5 7.5-5.5s6.3 1.9 7.5 5.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
               </svg>
               <input
+                ref={inputRef}
                 type="text"
                 inputMode="numeric"
                 autoComplete="off"
@@ -132,8 +191,22 @@ export default function Home() {
                 aria-label="İş nömrəsi"
                 value={isNomresi}
                 onChange={(e) => setIsNomresi(e.target.value)}
-                className="w-full rounded-2xl border border-gray-200 bg-white py-3.5 pl-12 pr-4 text-base text-brand-900 outline-none transition placeholder:text-gray-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-100"
+                className="w-full rounded-2xl border border-gray-200 bg-white py-3.5 pl-12 pr-11 text-base text-brand-900 outline-none transition placeholder:text-gray-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-100"
               />
+              {/* inputu təmizləmək üçün sadə × (düyməyə oxşamır) */}
+              {isNomresi && (
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  aria-label="Təmizlə"
+                  title="Təmizlə"
+                  className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center text-gray-400 transition hover:text-brand-600"
+                >
+                  <svg aria-hidden className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+                    <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </button>
+              )}
             </div>
 
             <button
@@ -165,6 +238,29 @@ export default function Home() {
           {status === "rate-limited" && (
             <p className="mt-4 text-center text-sm text-red-600">Çox sayda sorğu göndərildi. Bir dəqiqə sonra yenidən cəhd edin.</p>
           )}
+
+          {/* əlaqə */}
+          <div className="mt-6 flex flex-col items-center gap-2 border-t border-brand-100 pt-5 text-sm text-gray-600 sm:mt-8 sm:flex-row sm:justify-center sm:gap-6">
+            <a href="tel:+994503654404" className="flex items-center gap-2 font-semibold text-brand-800 hover:text-brand-600">
+              <svg aria-hidden className="h-4 w-4 shrink-0 text-brand-500" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              +994 50 365 44 04
+            </a>
+            <span className="flex items-center gap-2 text-center">
+              <svg aria-hidden className="h-4 w-4 shrink-0 text-brand-500" viewBox="0 0 24 24" fill="none">
+                <path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+                <circle cx="12" cy="9.5" r="2.5" stroke="currentColor" strokeWidth="1.8" />
+              </svg>
+              H. Əliyev pr. 201, Kontakt Home ilə üzbəüz
+            </span>
+          </div>
         </div>
       </section>
 
@@ -177,9 +273,9 @@ export default function Home() {
       {status === "found" && result && exam && (
         <div ref={resultRef} className="relative z-10 mt-6 flex w-full scroll-mt-4 justify-center sm:mt-10">
           {result.kind === "sheet" ? (
-            <ResultSheet exam={exam} result={result.result} />
+            <ResultSheet exam={exam} result={result.result} onNewSearch={handleNewSearch} />
           ) : (
-            <ResultFile isNomresi={searchedNo} ext={result.ext} />
+            <ResultFile isNomresi={searchedNo} ext={result.ext} onNewSearch={handleNewSearch} />
           )}
         </div>
       )}

@@ -226,7 +226,15 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 const EXPORT_WIDTH = 1000;
 
-export default function ResultSheet({ exam, result }: { exam: Exam; result: ExamResult }) {
+export default function ResultSheet({
+  exam,
+  result,
+  onNewSearch,
+}: {
+  exam: Exam;
+  result: ExamResult;
+  onNewSearch: () => void;
+}) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState<"pdf" | "img" | null>(null);
 
@@ -274,7 +282,19 @@ export default function ResultSheet({ exam, result }: { exam: Exam; result: Exam
   return (
     <div className="w-full max-w-5xl">
       <div className="mb-3 flex flex-col gap-3 sm:mb-4 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-lg font-semibold text-brand-800">Nəticəniz hazırdır</h2>
+        <div className="flex items-center justify-between gap-3 sm:justify-start sm:gap-4">
+          <h2 className="text-lg font-semibold text-brand-800">Nəticəniz hazırdır</h2>
+          <button
+            type="button"
+            onClick={onNewSearch}
+            className="flex items-center gap-1 text-sm font-medium text-brand-600 transition hover:text-brand-800"
+          >
+            <svg aria-hidden className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+              <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Yeni axtarış
+          </button>
+        </div>
         <div className="grid grid-cols-2 gap-2 sm:flex">
           <button
             onClick={() => handleExport("pdf")}
