@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 260" fill="none">
+  <!-- iz -->
+  <path d="M238 82 C 214 112, 196 120, 176 108 C 156 96, 170 70, 190 84 C 210 98, 196 140, 160 168 C 122 198, 64 214, 8 222"
+        stroke="#c08fd6" stroke-width="3" stroke-linecap="round" stroke-dasharray="2 12" opacity="0.9"/>
+  <!-- kağız təyyarə -->
+  <g transform="translate(228 26) rotate(-8)">
+    <path d="M100 0 L 0 46 L 32 58 Z" fill="#dcbde8"/>
+    <path d="M100 0 L 32 58 L 44 92 Z" fill="#a868c4"/>
+    <path d="M100 0 L 44 92 L 60 66 Z" fill="#7a2a96"/>
+    <path d="M32 58 L 44 92 L 50 70 Z" fill="#5e1a79"/>
+  </g>
+</svg>

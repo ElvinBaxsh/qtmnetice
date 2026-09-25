@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fdf6ec;
-  --foreground: #17213b;
+  --background: #fbf8fc;
+  --foreground: #2a0a38;
 }
 
 @theme inline {
@@ -10,10 +10,35 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Loqo rəngləri: bənövşəyi (#480060) və qızılı (#d8a818) */
+  --color-brand-50: #f8f1fb;
+  --color-brand-100: #efdff5;
+  --color-brand-200: #dcbde8;
+  --color-brand-300: #c08fd6;
+  --color-brand-500: #7a2a96;
+  --color-brand-600: #5e1a79;
+  --color-brand-700: #480060;
+  --color-brand-800: #3a004d;
+  --color-brand-900: #2a0a38;
+
+  --color-gold-50: #fdf8e9;
+  --color-gold-100: #faefcc;
+  --color-gold-200: #f2dc92;
+  --color-gold-400: #e5b833;
+  --color-gold-500: #d8a818;
+  --color-gold-600: #b88a0c;
+  --color-gold-700: #8f6a08;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Tailwind v4 düymələrdə göstərici (pointer) kursoru vermir */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
 }

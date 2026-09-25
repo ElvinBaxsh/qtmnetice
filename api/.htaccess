@@ -1,0 +1,6 @@
+# Daxili faylları birbaşa açmağa icazə verilmir
+<FilesMatch "^(config|config\.sample|_bootstrap)\.php$">
+  Require all denied
+</FilesMatch>
+
+Options -Indexes

@@ -1,7 +1,13 @@
 import type { NextConfig } from "next";
 
+// Statik export: `npm run build` -> out/ qovluğu (cPanel public_html-ə yüklənir).
+// Backend: cPanel-də PHP API (api/). Vercel-də (VERCEL=1) hostinq hazır olana qədər Supabase.
 const nextConfig: NextConfig = {
-  /* config options here */
+  output: "export",
+  images: { unoptimized: true },
+  env: {
+    BACKEND: process.env.BACKEND ?? (process.env.VERCEL ? "supabase" : "php"),
+  },
 };
 
 export default nextConfig;

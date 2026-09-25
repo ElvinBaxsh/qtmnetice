@@ -2,6 +2,7 @@ export type QuestionAnswer = {
   no: number | string;
   key: string;
   answer: string;
+  mark?: string; // PDF-dəki orijinal işarə: "+", "-", "#", "~"
   correct: boolean | null; // null = not applicable (e.g. essay/blank)
 };
 
@@ -36,7 +37,12 @@ export type ExamResult = {
 };
 
 export type Exam = {
-  id: string;
+  id: number;
   name: string;
   date: string;
 };
+
+// Nəticə ya struktur vərəqdir (PDF-dən oxunmuş), ya da yüklənmiş şəkil/PDF faylı
+export type LookupResult =
+  | { kind: "sheet"; result: ExamResult }
+  | { kind: "file"; ext: "png" | "jpg" | "jpeg" | "pdf" };

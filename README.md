@@ -2,43 +2,62 @@
 
 İmtahan nəticələrinin iş nömrəsi ilə axtarışı üçün veb tətbiq.
 
-Canlı: https://qtmnetice.vercel.app
+- **Sayt:** Next.js, statik export (`out/`)
+- **Backend:** PHP + MySQL (`api/`), cPanel hostinqdə işləyir
 
-## Yerli işə salma
+Sayt həmişə ən son dərc olunmuş (`exams.published = 1`) imtahanı göstərir.
 
-```bash
-npm install
-npm run dev
-```
-
-http://localhost:3000 ünvanında açılır. `.env.local`-da Supabase açarları lazımdır (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`).
+**Müvəqqəti:** Vercel-də yığılanda (`VERCEL=1`) sayt datanı Supabase-dən oxuyur (`src/lib/supabaseBackend.ts`), cPanel hostinqi aktivləşənə qədər. Başqa yerdə yığılanda PHP API istifadə olunur. Əl ilə seçmək üçün: `BACKEND=php` və ya `BACKEND=supabase`.
 
 ## Struktur
 
-- `src/app/page.tsx` — axtarış səhifəsi (imtahan seçimi + iş nömrəsi)
-- `src/components/ResultSheet.tsx` — nəticə vərəqi görünüşü, PDF/şəkil export
-- `src/lib/db.ts` — Supabase sorğuları
-- `supabase/migrations/` — DB sxemi (`exams`, `results`, RLS qaydaları)
+- `src/app/page.tsx` — axtarış səhifəsi
+- `src/components/ResultSheet.tsx` — nəticə vərəqi (PDF-dən oxunmuş nəticələr), PDF/şəkil export
+- `src/components/ResultFile.tsx` — yüklənmiş şəkil/PDF nəticə faylı
+- `src/lib/db.ts` — PHP API sorğuları
+- `api/` — PHP API (`exam.php`, `result.php`, `file.php`)
+- `database/schema.sql` — MySQL cədvəlləri
+- `scripts/results-to-sql.mjs` — nəticələri phpMyAdmin üçün SQL-ə çevirir
 
-## Nümunə iş nömrələri (demo)
+## Lokal işə salma (XAMPP)
 
-PDF-dəki 30 real nəticə **öz orijinal iş nömrələri ilə** (1101–1130) yüklənib. Tələbə adları məxfilik üçün burda qeyd olunmur — Supabase-də baxa bilərsiniz.
+1. XAMPP Control Panel → **Apache** və **MySQL** → Start
+2. http://localhost/phpmyadmin → `qtm` bazası yaradın (utf8mb4_unicode_ci) → Import → `database/schema.sql`, sonra nəticə SQL faylı
+3. `api/config.sample.php` → `api/config.php` kopyalayın, `db_name = qtm`, `db_user = root`, `db_pass = ''`, `cors_origin = 'http://localhost:3000'`
+4. `C:\xampp\htdocs\qtm-api` → `api/` qovluğuna junction (bir dəfəlik):
+   `mklink /J C:\xampp\htdocs\qtm-api C:\path\to\qtmnetice\api`
+5. `.env.local`: `NEXT_PUBLIC_API_BASE=http://localhost/qtm-api`
+6. `npm install && npm run dev` → http://localhost:3000
 
-Qeyd: 27xxx seriyalı iş nömrələri hələ tətbiq olunmayıb — hazırkı iş nömrələri mənbə PDF-dəki ilə eynidir. 27-lə başlayan seriyaya keçmək üçün yeni imtahanlarda iş nömrələrini bu formatda təyin etmək kifayətdir (kod dəyişikliyi tələb olunmur).
+## cPanel-ə yükləmə
 
-## PDF-dən nəticə idxalı
+1. **Baza:** cPanel → MySQL Databases → baza + istifadəçi yaradın, istifadəçiyə bazada ALL PRIVILEGES verin.
+   phpMyAdmin → bazanı seçin → Import → `database/schema.sql`, sonra nəticə SQL faylı.
+2. **Sayt:** `.env.local`-da `NEXT_PUBLIC_API_BASE` sətrini silin və ya şərhə alın, sonra `npm run build`.
+   `out/` qovluğunun **içindəkiləri** `public_html/`-ə yükləyin.
+3. **API:** `api/` qovluğunu `public_html/api/` kimi yükləyin (`.htaccess` daxil).
+   Serverdə `api/config.sample.php` → `api/config.php` kopyalayın və baza məlumatlarını yazın. `cors_origin` boş qalsın.
+4. **Yoxlama:** `https://domeniniz/api/exam.php` imtahanı JSON kimi qaytarmalıdır.
 
-Eyni formatlı yeni bir nəticə PDF-i gələndə:
+## Yeni nəticələrin yüklənməsi
+
+**PDF (optik oxuyucunun mətnli PDF-i):**
 
 ```bash
-node scripts/pdf-items.mjs /path/to/Netice.pdf /tmp/pdf-items-all.json
-node scripts/parse-pdf.mjs            # /tmp/parsed-results.json yaradır
-node --env-file=.env.local scripts/seed-real.mjs
+node scripts/pdf-items.mjs /yol/Netice.pdf items.json
+node scripts/parse-pdf.mjs items.json parsed.json
+node scripts/results-to-sql.mjs parsed.json "Qarabağ Tədris Mərkəzi — 04.10.2026 sınaq imtahanı" 2026-10-04 netice.sql
 ```
 
-`seed-real.mjs` içindəki `examName`-i lazım olduqca dəyişin. İş nömrəsi olaraq default PDF-dəki `İş nömrəsi` sahəsi (`origIsNomresi`) istifadə olunur.
+`netice.sql`-i phpMyAdmin → Import ilə yükləyin. Yeni imtahan avtomatik yaradılır və saytda ən son imtahan kimi görünür.
 
-## Növbəti addımlar
+**Şəkil/PDF fayllar (hər tələbə üçün ayrı fayl):**
 
-- Admin panelində CSV/PDF yükləmə UI-ı (hazırda skriptlə edilir)
-- Yeni imtahanlar üçün ayrı `exams` sətri
+1. İmtahanı yaradın (phpMyAdmin → `exams` → Insert) və onun `id`-sini qeyd edin.
+2. File Manager ilə faylları `config.php`-dəki `files_dir` qovluğuna, `<imtahan id>/` alt qovluğuna yükləyin.
+   Fayl adı iş nömrəsi olmalıdır: `1125.png`, `1126.jpg`, `1127.pdf`.
+3. `files_dir` **public_html-dən kənarda** olmalıdır, əks halda fayllar birbaşa URL ilə açıla bilər.
+
+Eyni iş nömrəsi həm bazada, həm də fayl kimi varsa, bazadakı nəticə göstərilir.
+
+Nəticələri gizlətmək üçün: `exams.published = 0` (bütün imtahan) və ya `results.published = 0` (tək nəticə).
