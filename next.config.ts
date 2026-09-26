@@ -4,6 +4,8 @@ import type { NextConfig } from "next";
 // Backend: cPanel-də PHP API (api/). Vercel-də (VERCEL=1) hostinq hazır olana qədər Supabase.
 const nextConfig: NextConfig = {
   output: "export",
+  // /admin -> admin/index.html: Apache-də rewrite qaydası olmadan açılır
+  trailingSlash: true,
   images: { unoptimized: true },
   env: {
     BACKEND: process.env.BACKEND ?? (process.env.VERCEL ? "supabase" : "php"),

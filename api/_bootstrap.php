@@ -12,15 +12,26 @@ set_exception_handler(function (Throwable $e): void {
     echo json_encode(['error' => 'server']);
 });
 
-$config = require __DIR__ . '/config.php';
+// Konfiqurasiya (baza şifrəsi) mümkünsə public_html-dən kənarda saxlanır: /home/<user>/qtm-config.php.
+// Yoxdursa api/config.php istifadə olunur (.htaccess ilə bağlıdır).
+$configFile = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'qtm-config.php';
+$config = require (is_file($configFile) ? $configFile : __DIR__ . '/config.php');
 
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
 header('Cache-Control: no-store');
 
+// Yalnız lokal inkişaf üçün (sayt localhost:3000-də, API XAMPP-da)
 if (!empty($config['cors_origin'])) {
     header('Access-Control-Allow-Origin: ' . $config['cors_origin']);
+    header('Access-Control-Allow-Credentials: true');
+    header('Access-Control-Allow-Headers: Content-Type, X-QTM');
+    header('Access-Control-Allow-Methods: GET, POST');
     header('Vary: Origin');
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
+        http_response_code(204);
+        exit;
+    }
 }
 
 function json_out(int $status, array $body): void
@@ -54,30 +65,37 @@ function db(): PDO
     return $pdo;
 }
 
-// Bir IP-dən dəqiqədə limitdən çox sorğunu rədd edir
-function rate_limit(): void
+// Sayğac: $key üçün cari $window saniyəlik pəncərədəki sorğu sayı ($increment = false olarsa artırmır)
+function counter(string $key, int $window, bool $increment = true): int
+{
+    $start = intdiv(time(), $window) * $window;
+    $pdo = db();
+    if ($increment) {
+        $pdo->prepare(
+            'INSERT INTO rate_limits (ip, window_start, hits) VALUES (?, ?, 1)
+             ON DUPLICATE KEY UPDATE
+               hits = IF(window_start = VALUES(window_start), hits + 1, 1),
+               window_start = VALUES(window_start)'
+        )->execute([$key, $start]);
+        if (mt_rand(1, 200) === 1) {
+            $pdo->prepare('DELETE FROM rate_limits WHERE window_start < ?')->execute([time() - 86400]);
+        }
+    }
+    $stmt = $pdo->prepare('SELECT hits FROM rate_limits WHERE ip = ? AND window_start = ?');
+    $stmt->execute([$key, $start]);
+    return (int) $stmt->fetchColumn();
+}
+
+// Bir IP-dən dəqiqəlik və saatlıq limitdən çox sorğunu rədd edir (iş nömrələrinin toplu yoxlanmasına qarşı).
+// $bucket ayrı sayğac üçündür (məs. "login:")
+function rate_limit(string $bucket = '', ?int $perMinute = null): void
 {
     global $config;
     $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-    $window = intdiv(time(), 60) * 60;
+    $perMinute ??= (int) ($config['rate_limit_per_minute'] ?? 20);
+    $perHour = (int) ($config['rate_limit_per_hour'] ?? 300);
 
-    $pdo = db();
-    $pdo->prepare(
-        'INSERT INTO rate_limits (ip, window_start, hits) VALUES (?, ?, 1)
-         ON DUPLICATE KEY UPDATE
-           hits = IF(window_start = VALUES(window_start), hits + 1, 1),
-           window_start = VALUES(window_start)'
-    )->execute([$ip, $window]);
-
-    $stmt = $pdo->prepare('SELECT hits FROM rate_limits WHERE ip = ?');
-    $stmt->execute([$ip]);
-    $hits = (int) $stmt->fetchColumn();
-
-    if (mt_rand(1, 100) === 1) {
-        $pdo->prepare('DELETE FROM rate_limits WHERE window_start < ?')->execute([$window - 3600]);
-    }
-
-    if ($hits > (int) ($config['rate_limit_per_minute'] ?? 20)) {
+    if (counter("m:$bucket$ip", 60) > $perMinute || counter("h:$bucket$ip", 3600) > $perHour) {
         json_out(429, ['error' => 'too_many_requests']);
     }
 }
@@ -113,4 +131,47 @@ function find_result_file(int $examId, string $no): ?array
         }
     }
     return null;
+}
+
+// Açıq tipli suallara cavab faylları (müəllim yükləyir): files_dir/answers/<imtahan id>/<iş nömrəsi>/
+const ANSWER_FILE_TYPES = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp', 'application/pdf' => 'pdf'];
+
+function answers_dir(int $examId, string $no): string
+{
+    global $config;
+    return rtrim((string) ($config['files_dir'] ?? ''), '/\\') . DIRECTORY_SEPARATOR . 'answers'
+        . DIRECTORY_SEPARATOR . $examId . DIRECTORY_SEPARATOR . $no;
+}
+
+function list_answer_files(int $examId, string $no): array
+{
+    $stmt = db()->prepare(
+        'SELECT id, mime, original_name, size_bytes FROM answer_files WHERE exam_id = ? AND is_nomresi = ? ORDER BY id'
+    );
+    $stmt->execute([$examId, $no]);
+    return array_map(fn(array $r) => [
+        'id' => (int) $r['id'],
+        'mime' => $r['mime'],
+        'name' => $r['original_name'],
+        'size' => (int) $r['size_bytes'],
+    ], $stmt->fetchAll());
+}
+
+// Faylı brauzerə göndərir (JSON başlıqlarının üstündən yazır)
+function send_file(string $path, string $mime, string $downloadName, bool $download): void
+{
+    header('Content-Type: ' . $mime);
+    header('Content-Length: ' . filesize($path));
+    // Ad başlığa düşür: dırnaq, sətir sonu və s. təmizlənir; UTF-8 ad ayrıca verilir
+    $ascii = preg_replace('/[^A-Za-z0-9._-]+/', '_', $downloadName) ?: 'fayl';
+    header('Content-Disposition: ' . ($download ? 'attachment' : 'inline')
+        . '; filename="' . $ascii . '"; filename*=UTF-8\'\'' . rawurlencode($downloadName));
+    header('Cache-Control: private, no-store');
+    // Şəkil heç vaxt skript kimi işləməsin (sandbox); PDF-də Chrome-un öz görüntüləyicisi işləsin deyə sandbox qoyulmur
+    if (str_starts_with($mime, 'image/')) {
+        header("Content-Security-Policy: sandbox; default-src 'none'; img-src 'self'; style-src 'unsafe-inline'");
+    }
+    header('X-Frame-Options: SAMEORIGIN');
+    readfile($path);
+    exit;
 }

@@ -265,13 +265,15 @@ export default function ResultSheet({
         link.click();
       } else {
         const { jsPDF } = await import("jspdf");
-        const imgData = canvas.toDataURL("image/png");
+        // JPEG: PNG ilə PDF ~14 MB olurdu (telefonda mobil internet üçün ağır), JPEG ilə ~1 MB
+        const imgData = canvas.toDataURL("image/jpeg", 0.9);
         const pdf = new jsPDF({
           orientation: canvas.width > canvas.height ? "l" : "p",
           unit: "px",
           format: [canvas.width, canvas.height],
+          compress: true,
         });
-        pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
+        pdf.addImage(imgData, "JPEG", 0, 0, canvas.width, canvas.height);
         pdf.save(`${fileBase}.pdf`);
       }
     } finally {

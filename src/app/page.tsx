@@ -6,6 +6,7 @@ import { getCurrentExam, findResult, RateLimitError } from "@/lib/db";
 import type { Exam, LookupResult } from "@/lib/types";
 import ResultSheet from "@/components/ResultSheet";
 import ResultFile from "@/components/ResultFile";
+import AnswerFiles from "@/components/AnswerFiles";
 
 // "Qarabağ Tədris Mərkəzi — 27.09.2026 sınaq imtahanı" -> ["Qarabağ Tədris Mərkəzi", "27.09.2026 sınaq imtahanı"]
 function splitExamName(name: string): [string, string] {
@@ -15,6 +16,7 @@ function splitExamName(name: string): [string, string] {
 
 // Son nəticə yalnız bu tabda saxlanır: refresh-də qalır, tab bağlananda silinir
 const STORAGE_KEY = "qtm-son-netice";
+const SCROLL_KEY = "qtm-son-movqe";
 type Saved = { examName: string; no: string; result: LookupResult };
 
 function loadSaved(): Saved | null {
@@ -45,18 +47,31 @@ export default function Home() {
 
   const resultRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  // Refresh-dən sonra bərpa olunan nəticəyə sürüşdürmürük — brauzer öz mövqeyini saxlayır
-  const skipScrollRef = useRef(false);
+  // Yalnız yeni axtarışdan sonra nəticəyə sürüşdürürük (telefonda forma ekranı tutur)
+  const [scrollToken, setScrollToken] = useState(0);
+  // Refresh-dən sonra əvvəlki mövqeyə qayıtmaq üçün (nəticə serverdən gec gəlir, brauzer özü bərpa edə bilmir)
+  const pendingScrollY = useRef<number | null>(null);
 
-  // Nəticə tapılanda ona sürüşdür (telefonda forma ekranı tutur)
   useEffect(() => {
-    if (status !== "found") return;
-    if (skipScrollRef.current) {
-      skipScrollRef.current = false;
-      return;
-    }
-    resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (scrollToken > 0) resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [scrollToken]);
+
+  useEffect(() => {
+    if (pendingScrollY.current === null || status !== "found") return;
+    window.scrollTo(0, pendingScrollY.current);
+    pendingScrollY.current = null;
   }, [status, result]);
+
+  useEffect(() => {
+    history.scrollRestoration = "manual";
+    const remember = () => {
+      try {
+        sessionStorage.setItem(SCROLL_KEY, String(Math.round(window.scrollY)));
+      } catch {}
+    };
+    window.addEventListener("pagehide", remember);
+    return () => window.removeEventListener("pagehide", remember);
+  }, []);
 
   useEffect(() => {
     getCurrentExam()
@@ -65,11 +80,21 @@ export default function Home() {
         const saved = loadSaved();
         // Başqa imtahanın köhnə nəticəsini göstərmirik
         if (current && saved && saved.examName === current.name) {
-          skipScrollRef.current = true;
+          try {
+            pendingScrollY.current = Number(sessionStorage.getItem(SCROLL_KEY)) || 0;
+          } catch {}
           setIsNomresi(saved.no);
           setSearchedNo(saved.no);
           setResult(saved.result);
           setStatus("found");
+          // Saxlanmış nüsxə köhnə ola bilər (məs. müəllim sonradan cavab faylı yükləyib) — serverdən təzəsini alırıq
+          findResult(saved.no)
+            .then((fresh) => {
+              if (!fresh) return;
+              setResult(fresh);
+              saveResult({ examName: current.name, no: saved.no, result: fresh });
+            })
+            .catch(() => {});
         } else if (saved) {
           saveResult(null);
         }
@@ -102,6 +127,7 @@ export default function Home() {
       setResult(found);
       setSearchedNo(no);
       setStatus(found ? "found" : "not-found");
+      if (found) setScrollToken((t) => t + 1);
       saveResult(found ? { examName: exam.name, no, result: found } : null);
     } catch (err) {
       setResult(null);
@@ -271,9 +297,12 @@ export default function Home() {
       )}
 
       {status === "found" && result && exam && (
-        <div ref={resultRef} className="relative z-10 mt-6 flex w-full scroll-mt-4 justify-center sm:mt-10">
+        <div ref={resultRef} className="relative z-10 mt-6 flex w-full scroll-mt-4 flex-col items-center sm:mt-10">
           {result.kind === "sheet" ? (
-            <ResultSheet exam={exam} result={result.result} onNewSearch={handleNewSearch} />
+            <>
+              <ResultSheet exam={exam} result={result.result} onNewSearch={handleNewSearch} />
+              <AnswerFiles isNomresi={searchedNo} files={result.answerFiles ?? []} />
+            </>
           ) : (
             <ResultFile isNomresi={searchedNo} ext={result.ext} onNewSearch={handleNewSearch} />
           )}

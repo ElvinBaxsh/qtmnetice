@@ -44,3 +44,6 @@ next-env.d.ts
 
 # PHP API konfiqurasiyası (DB şifrəsi)
 /api/config.php
+
+# Server konfiqurasiyası (baza şifrəsi)
+qtm-config.php

@@ -1,0 +1,10 @@
+{
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "qtmnetice.vercel.app" }],
+      "destination": "https://qtmnetice.az/$1",
+      "permanent": false
+    }
+  ]
+}

@@ -42,7 +42,10 @@ export type Exam = {
   date: string;
 };
 
+// Müəllimin yüklədiyi açıq tipli cavab faylı
+export type AnswerFile = { id: number; mime: string };
+
 // Nəticə ya struktur vərəqdir (PDF-dən oxunmuş), ya da yüklənmiş şəkil/PDF faylı
 export type LookupResult =
-  | { kind: "sheet"; result: ExamResult }
+  | { kind: "sheet"; result: ExamResult; answerFiles?: AnswerFile[] }
   | { kind: "file"; ext: "png" | "jpg" | "jpeg" | "pdf" };

@@ -33,3 +33,7 @@ export async function findResult(isNomresi: string): Promise<LookupResult | null
 export function resultFileUrl(isNomresi: string, download = false): string {
   return `${API_BASE}/file.php?no=${encodeURIComponent(isNomresi)}${download ? "&download=1" : ""}`;
 }
+
+export function answerFileUrl(isNomresi: string, id: number, download = false): string {
+  return `${API_BASE}/answer-file.php?no=${encodeURIComponent(isNomresi)}&id=${id}${download ? "&download=1" : ""}`;
+}

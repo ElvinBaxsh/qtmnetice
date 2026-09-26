@@ -1,6 +1,13 @@
 # Daxili faylları birbaşa açmağa icazə verilmir
-<FilesMatch "^(config|config\.sample|_bootstrap)\.php$">
+<FilesMatch "^(config|config\.sample|_bootstrap|_admin)\.php$|^\.">
   Require all denied
 </FilesMatch>
 
 Options -Indexes
+
+# API cavablarının başlıqlarını PHP özü qoyur (fayl cavabları üçün xüsusi CSP) — kök .htaccess-dəkiləri ləğv edirik
+<IfModule mod_headers.c>
+  Header always unset Content-Security-Policy
+  Header always unset X-Frame-Options
+  Header always set X-Content-Type-Options "nosniff"
+</IfModule>

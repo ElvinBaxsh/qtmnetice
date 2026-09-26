@@ -35,6 +35,11 @@ if ($row) {
             'summary' => json_decode($row['summary'], true) ?? [],
             'umumiBal' => (float) ($row['umumi_bal'] ?? 0),
         ],
+        // Açıq tipli suallara cavab faylları (müəllim yükləyir)
+        'answerFiles' => array_map(
+            fn(array $f) => ['id' => $f['id'], 'mime' => $f['mime']],
+            list_answer_files((int) $exam['id'], $no)
+        ),
     ]);
 }
 
