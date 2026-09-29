@@ -34,6 +34,8 @@ if ($row) {
             'sections' => json_decode($row['sections'], true) ?? [],
             'summary' => json_decode($row['summary'], true) ?? [],
             'umumiBal' => (float) ($row['umumi_bal'] ?? 0),
+            // Yeni formatın əlavə sahələri (ata adı, xarici dil, ümumi doğru/yanlış/cavabsız)
+            'extra' => isset($row['extra']) ? (json_decode($row['extra'], true) ?: null) : null,
         ],
         // Açıq tipli suallara cavab faylları (müəllim yükləyir)
         'answerFiles' => array_map(

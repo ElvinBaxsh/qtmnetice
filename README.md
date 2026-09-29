@@ -97,6 +97,14 @@ node scripts/results-to-sql.mjs parsed.json "Qarabağ Tədris Mərkəzi — 04.1
 
 `netice.sql`-i phpMyAdmin → Import ilə yükləyin. Yeni imtahan avtomatik yaradılır və saytda ən son imtahan kimi görünür.
 
+- `parse-pdf.mjs` formatı özü tanıyır: "NƏTİCƏ VƏRƏQİ" (fənn üzrə Doğru / Yanlış / Cavabsız / Bal, ata adı, xarici dil)
+  və köhnə 9-cu sinif formatı. Fənlər başlıqdan oxunur (məs. "Riyaziyyat (21-40)"); xana sayı, fənn ballarının cəmi
+  və doğru/yanlış/cavabsız sayları yoxlanılır — uyğunsuzluq olsa xəta verir, səhv data yazılmır.
+- Bir neçə sinfin nəticəsi eyni imtahana yüklənə bilər (iş nömrələri təkrarlanmamalıdır).
+- `--replace` (sonda): imtahanın **köhnə nəticələrini silib** yenisini yazır. Onsuz — mövcud nəticələrə əlavə edir,
+  eyni iş nömrəsi olarsa yeniləyir.
+- Artıq qurulmuş bazada yeni format üçün bir dəfə: `database/003_result_extra.sql`.
+
 **Şəkil/PDF fayllar (hər tələbə üçün ayrı fayl):**
 
 1. İmtahanı yaradın (phpMyAdmin → `exams` → Insert) və onun `id`-sini qeyd edin.

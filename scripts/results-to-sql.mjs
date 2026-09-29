@@ -1,13 +1,16 @@
 // Nəticələri phpMyAdmin-ə import üçün SQL faylına çevirir.
 //
 // İstifadə:
-//   node scripts/results-to-sql.mjs <nəticələr.json> "<imtahan adı>" <YYYY-MM-DD> <çıxış.sql>
+//   node scripts/results-to-sql.mjs <nəticələr.json> "<imtahan adı>" <YYYY-MM-DD> <çıxış.sql> [--replace]
 //
 // <nəticələr.json> — parse-pdf.mjs-in çıxışı (massiv), və ya { results: [...] } obyekti.
 // İmtahan yoxdursa yaradılır; eyni iş nömrəsi təkrar gələrsə yenilənir.
 import { readFileSync, writeFileSync } from "fs";
 
-const [inputPath, examName, examDate, outPath] = process.argv.slice(2);
+const args = process.argv.slice(2);
+// --replace: imtahanın köhnə nəticələrini (və cavab fayllarının qeydlərini) silib yenisini yazır
+const replace = args.includes("--replace");
+const [inputPath, examName, examDate, outPath] = args.filter((a) => a !== "--replace");
 if (!inputPath || !examName || !/^\d{4}-\d{2}-\d{2}$/.test(examDate ?? "") || !outPath) {
   console.error('İstifadə: node scripts/results-to-sql.mjs <nəticələr.json> "<imtahan adı>" <YYYY-MM-DD> <çıxış.sql>');
   process.exit(1);
@@ -42,9 +45,16 @@ const values = rows.map((r) => {
     q(JSON.stringify(r.sections ?? [])),
     q(JSON.stringify(r.summary ?? [])),
     num(r.umumiBal ?? r.umumi_bal),
+    r.extra ? q(JSON.stringify(r.extra)) : "NULL",
     r.published === false ? "0" : "1",
   ].join(", ")})`;
 });
+
+const REPLACE_SQL = `-- Köhnə nəticələr silinir (--replace)
+DELETE FROM answer_files WHERE exam_id = @exam_id;
+DELETE FROM results WHERE exam_id = @exam_id;
+
+`;
 
 const sql = `-- ${rows.length} nəticə: ${examName} (${examDate})
 SET NAMES utf8mb4;
@@ -55,12 +65,12 @@ WHERE NOT EXISTS (SELECT 1 FROM exams WHERE name = ${q(examName)} AND exam_date 
 
 SET @exam_id = (SELECT id FROM exams WHERE name = ${q(examName)} AND exam_date = ${q(examDate)} ORDER BY id LIMIT 1);
 
-INSERT INTO results (exam_id, is_nomresi, soyadi, adi, sinif, bolme, variant, sections, summary, umumi_bal, published) VALUES
+${replace ? REPLACE_SQL : ""}INSERT INTO results (exam_id, is_nomresi, soyadi, adi, sinif, bolme, variant, sections, summary, umumi_bal, extra, published) VALUES
 ${values.join(",\n")}
 ON DUPLICATE KEY UPDATE
   soyadi = VALUES(soyadi), adi = VALUES(adi), sinif = VALUES(sinif), bolme = VALUES(bolme),
   variant = VALUES(variant), sections = VALUES(sections), summary = VALUES(summary),
-  umumi_bal = VALUES(umumi_bal), published = VALUES(published);
+  umumi_bal = VALUES(umumi_bal), extra = VALUES(extra), published = VALUES(published);
 `;
 
 writeFileSync(outPath, sql);

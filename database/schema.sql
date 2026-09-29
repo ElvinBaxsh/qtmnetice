@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS results (
   sections LONGTEXT NOT NULL,  -- JSON
   summary LONGTEXT NOT NULL,   -- JSON
   umumi_bal DECIMAL(8,2) NULL,
+  extra LONGTEXT NULL,         -- JSON: ata adı, xarici dil, ümumi doğru/yanlış/cavabsız
   published TINYINT(1) NOT NULL DEFAULT 1,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),

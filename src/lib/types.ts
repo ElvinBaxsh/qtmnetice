@@ -11,15 +11,32 @@ export type Section = {
   questions: QuestionAnswer[];
 };
 
+// Fənn üzrə yekun. İki format var:
+// - köhnə (9-cu sinif sınağı): qapalı/açıq düz-səhv, yazı balları, fənn balı
+// - "NƏTİCƏ VƏRƏQİ" (QTM Təkmilləşdirmə): doğru / yanlış / cavabsız / bal
 export type SubjectSummary = {
   fenn: string;
   sualSayi: number;
-  qapaliDuzSayi: number;
-  qapaliSehvSayi: number;
-  aciqDuzSayi: number;
-  aciqSehvSayi: number;
-  yaziBallarinCemi: number;
-  fennBali: number;
+  qapaliDuzSayi?: number;
+  qapaliSehvSayi?: number;
+  aciqDuzSayi?: number;
+  aciqSehvSayi?: number;
+  yaziBallarinCemi?: number;
+  fennBali?: number;
+  dogru?: number;
+  yanlis?: number;
+  cavabsiz?: number;
+  bal?: number;
+};
+
+// Yalnız yeni formatda olan əlavə məlumatlar
+export type ResultExtra = {
+  ataAdi?: string;
+  xariciDil?: string;
+  mekteb?: string;
+  dogru?: number;
+  yanlis?: number;
+  cavabsiz?: number;
 };
 
 export type ExamResult = {
@@ -34,6 +51,7 @@ export type ExamResult = {
   sections: Section[];
   summary: SubjectSummary[];
   umumiBal: number;
+  extra?: ResultExtra;
 };
 
 export type Exam = {

@@ -148,16 +148,44 @@ function SectionBlock({ section }: { section: ExamResult["sections"][number] }) 
   );
 }
 
-function fmt(n: number, digits: number) {
+function fmt(n: number | undefined, digits: number) {
   return Number(n ?? 0).toFixed(digits);
 }
 
+// Yeni formatda ballar PDF-dəki kimi: 542.5, 200 (lazımsız sıfırlar olmadan)
+function score(n: number | undefined) {
+  return String(Number(Number(n ?? 0).toFixed(2)));
+}
+
+// "NƏTİCƏ VƏRƏQİ" formatı: fənn üzrə doğru / yanlış / cavabsız / bal
+function isSimpleFormat(result: ExamResult) {
+  return result.summary.some((r) => r.dogru !== undefined);
+}
+
 function SummaryBlock({ result }: { result: ExamResult }) {
+  const simple = isSimpleFormat(result);
+  const totals = result.extra;
+
   return (
     <div className="mt-2">
       <div className="mb-3 flex items-center justify-between gap-3 rounded-xl bg-gradient-to-r from-brand-700 to-brand-500 px-4 py-3 text-white">
-        <span className="text-sm font-semibold uppercase tracking-wide">Ümumi bal</span>
-        <span className="text-3xl font-extrabold text-gold-200">{fmt(result.umumiBal, 2)}</span>
+        <div>
+          <span className="text-sm font-semibold uppercase tracking-wide">Ümumi bal</span>
+          {simple && totals && (
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-brand-100">
+              <span>
+                Doğru <b className="text-white">{score(totals.dogru)}</b>
+              </span>
+              <span>
+                Yanlış <b className="text-white">{score(totals.yanlis)}</b>
+              </span>
+              <span>
+                Cavabsız <b className="text-white">{score(totals.cavabsiz)}</b>
+              </span>
+            </div>
+          )}
+        </div>
+        <span className="text-3xl font-extrabold text-gold-200">{simple ? score(result.umumiBal) : fmt(result.umumiBal, 2)}</span>
       </div>
 
       {/* Telefon: hər fənn ayrıca kart */}
@@ -167,16 +195,28 @@ function SummaryBlock({ result }: { result: ExamResult }) {
             <div className="mb-2 flex items-baseline justify-between gap-2">
               <span className="font-semibold text-brand-800">{row.fenn}</span>
               <span className="text-sm text-gray-500">
-                Fənn balı <b className="text-base text-brand-800">{fmt(row.fennBali, 2)}</b>
+                {simple ? "Bal" : "Fənn balı"}{" "}
+                <b className="text-base text-brand-800">{simple ? score(row.bal) : fmt(row.fennBali, 2)}</b>
               </span>
             </div>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-              <Stat label="Sual sayı" value={String(row.sualSayi)} />
-              <Stat label="Yazı balları" value={fmt(row.yaziBallarinCemi, 2)} />
-              <Stat label="Qapalı düz" value={fmt(row.qapaliDuzSayi, 1)} />
-              <Stat label="Qapalı səhv" value={fmt(row.qapaliSehvSayi, 1)} />
-              <Stat label="Açıq düz" value={fmt(row.aciqDuzSayi, 1)} />
-              <Stat label="Açıq səhv" value={fmt(row.aciqSehvSayi, 1)} />
+              {simple ? (
+                <>
+                  <Stat label="Sual sayı" value={String(row.sualSayi)} />
+                  <Stat label="Doğru" value={score(row.dogru)} />
+                  <Stat label="Yanlış" value={score(row.yanlis)} />
+                  <Stat label="Cavabsız" value={score(row.cavabsiz)} />
+                </>
+              ) : (
+                <>
+                  <Stat label="Sual sayı" value={String(row.sualSayi)} />
+                  <Stat label="Yazı balları" value={fmt(row.yaziBallarinCemi, 2)} />
+                  <Stat label="Qapalı düz" value={fmt(row.qapaliDuzSayi, 1)} />
+                  <Stat label="Qapalı səhv" value={fmt(row.qapaliSehvSayi, 1)} />
+                  <Stat label="Açıq düz" value={fmt(row.aciqDuzSayi, 1)} />
+                  <Stat label="Açıq səhv" value={fmt(row.aciqSehvSayi, 1)} />
+                </>
+              )}
             </dl>
           </div>
         ))}
@@ -188,12 +228,23 @@ function SummaryBlock({ result }: { result: ExamResult }) {
           <tr className="bg-brand-50 text-brand-800">
             <th className="w-[16%] px-2 py-2 text-left font-semibold">Fənlər</th>
             <th className="px-2 py-2 font-semibold">Sual sayı</th>
-            <th className="px-2 py-2 font-semibold">Qapalı testlər üzrə düz sayı</th>
-            <th className="px-2 py-2 font-semibold">Qapalı testlər üzrə səhv sayı</th>
-            <th className="px-2 py-2 font-semibold">Açıq testlər üzrə düz sayı</th>
-            <th className="px-2 py-2 font-semibold">Açıq testlər üzrə səhv sayı</th>
-            <th className="px-2 py-2 font-semibold">Yazı testləri üzrə balların cəmi</th>
-            <th className="px-2 py-2 font-semibold">Fənn balı</th>
+            {simple ? (
+              <>
+                <th className="px-2 py-2 font-semibold">Doğru</th>
+                <th className="px-2 py-2 font-semibold">Yanlış</th>
+                <th className="px-2 py-2 font-semibold">Cavabsız</th>
+                <th className="px-2 py-2 font-semibold">Bal</th>
+              </>
+            ) : (
+              <>
+                <th className="px-2 py-2 font-semibold">Qapalı testlər üzrə düz sayı</th>
+                <th className="px-2 py-2 font-semibold">Qapalı testlər üzrə səhv sayı</th>
+                <th className="px-2 py-2 font-semibold">Açıq testlər üzrə düz sayı</th>
+                <th className="px-2 py-2 font-semibold">Açıq testlər üzrə səhv sayı</th>
+                <th className="px-2 py-2 font-semibold">Yazı testləri üzrə balların cəmi</th>
+                <th className="px-2 py-2 font-semibold">Fənn balı</th>
+              </>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -201,12 +252,23 @@ function SummaryBlock({ result }: { result: ExamResult }) {
             <tr key={row.fenn} className="border-t border-brand-100">
               <td className="px-2 py-2 text-left font-semibold text-brand-800">{row.fenn}</td>
               <td className="px-2 py-2">{row.sualSayi}</td>
-              <td className="px-2 py-2">{fmt(row.qapaliDuzSayi, 1)}</td>
-              <td className="px-2 py-2">{fmt(row.qapaliSehvSayi, 1)}</td>
-              <td className="px-2 py-2">{fmt(row.aciqDuzSayi, 1)}</td>
-              <td className="px-2 py-2">{fmt(row.aciqSehvSayi, 1)}</td>
-              <td className="px-2 py-2">{fmt(row.yaziBallarinCemi, 2)}</td>
-              <td className="px-2 py-2 font-bold text-brand-800">{fmt(row.fennBali, 2)}</td>
+              {simple ? (
+                <>
+                  <td className="px-2 py-2 text-emerald-700">{score(row.dogru)}</td>
+                  <td className="px-2 py-2 text-red-600">{score(row.yanlis)}</td>
+                  <td className="px-2 py-2 text-gray-500">{score(row.cavabsiz)}</td>
+                  <td className="px-2 py-2 font-bold text-brand-800">{score(row.bal)}</td>
+                </>
+              ) : (
+                <>
+                  <td className="px-2 py-2">{fmt(row.qapaliDuzSayi, 1)}</td>
+                  <td className="px-2 py-2">{fmt(row.qapaliSehvSayi, 1)}</td>
+                  <td className="px-2 py-2">{fmt(row.aciqDuzSayi, 1)}</td>
+                  <td className="px-2 py-2">{fmt(row.aciqSehvSayi, 1)}</td>
+                  <td className="px-2 py-2">{fmt(row.yaziBallarinCemi, 2)}</td>
+                  <td className="px-2 py-2 font-bold text-brand-800">{fmt(row.fennBali, 2)}</td>
+                </>
+              )}
             </tr>
           ))}
         </tbody>
@@ -344,6 +406,10 @@ export default function ResultSheet({
           <InfoRow label="Sinif" value={result.sinif} order="order-4" />
           <InfoRow label="Adı" value={result.adi} order="order-2" />
           <InfoRow label="Variant" value={result.variant} order="order-5" />
+          {/* Yeni formatda əlavə sahələr (boşdursa göstərilmir) */}
+          {result.extra?.ataAdi && <InfoRow label="Ata adı" value={result.extra.ataAdi} order="order-2" />}
+          {result.extra?.xariciDil && <InfoRow label="Xarici dil" value={result.extra.xariciDil} order="order-5" />}
+          {result.extra?.mekteb && <InfoRow label="Məktəb" value={result.extra.mekteb} order="order-6" />}
         </div>
 
         {result.sections.map((section) => (
