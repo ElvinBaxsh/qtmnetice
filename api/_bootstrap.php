@@ -92,8 +92,8 @@ function rate_limit(string $bucket = '', ?int $perMinute = null): void
 {
     global $config;
     $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-    $perMinute ??= (int) ($config['rate_limit_per_minute'] ?? 20);
-    $perHour = (int) ($config['rate_limit_per_hour'] ?? 300);
+    $perMinute ??= (int) ($config['rate_limit_per_minute'] ?? 60);
+    $perHour = (int) ($config['rate_limit_per_hour'] ?? 1000);
 
     if (counter("m:$bucket$ip", 60) > $perMinute || counter("h:$bucket$ip", 3600) > $perHour) {
         json_out(429, ['error' => 'too_many_requests']);

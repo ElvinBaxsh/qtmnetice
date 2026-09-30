@@ -77,7 +77,7 @@ və serverdəki `api/config.php`-də `admins` siyahısına əlavə edin:
 ## Təhlükəsizlik
 
 - SQL: bütün sorğular parametrli (prepared statements).
-- Axtarış limiti: bir IP-dən dəqiqədə 20, saatda 300 sorğu (`rate_limit_per_minute`, `rate_limit_per_hour`).
+- Axtarış limiti: bir IP-dən dəqiqədə 60, saatda 1000 sorğu (`rate_limit_per_minute`, `rate_limit_per_hour`).
 - Fayllar public_html-dən kənarda, təsadüfi adla; növ məzmuna görə yoxlanır; şəkillər `CSP: sandbox` ilə verilir.
 - Tələbə yalnız öz iş nömrəsinin və yalnız elan olunmuş nəticənin fayllarını görə bilər.
 - Admin: parol hash (bcrypt), sessiya cookie `Secure; HttpOnly; SameSite=Lax`, strict mode, CSRF üçün `X-QTM` başlığı.

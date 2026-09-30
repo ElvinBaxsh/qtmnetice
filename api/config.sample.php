@@ -16,8 +16,8 @@ return [
     'cors_origin' => '',
 
     // Bir IP-dən maksimum axtarış sayı (dəqiqədə / saatda)
-    'rate_limit_per_minute' => 20,
-    'rate_limit_per_hour' => 300,
+    'rate_limit_per_minute' => 60,
+    'rate_limit_per_hour' => 1000,
 
     // Admin panel (müəllimlər): istifadəçi adı => şifrənin hash-i.
     // Hash yaratmaq: php -r "echo password_hash('ŞİFRƏ', PASSWORD_DEFAULT);"

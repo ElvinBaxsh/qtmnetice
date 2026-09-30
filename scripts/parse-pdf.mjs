@@ -174,8 +174,11 @@ function parsePageQtm(pageData, pageNo) {
     const title = rows[ti].items[0];
     const [, fenn, from, to] = title.match(/^(.*?)\s*\((\d+)\s*-\s*(\d+)\)$/);
     const count = Number(to) - Number(from) + 1;
-    const block = rows.slice(ti + 1, ti + 5);
-    const byLabel = Object.fromEntries(block.map((r) => [r.items[0], r.items]));
+    // Bölmənin sətirləri: başlıqdan növbəti bölmə başlığına qədər (sətirlərin sayı sabit deyil —
+    // uzun bal xanası iki sətrə bölünəndə "Nəticələr" sətri şaquli sürüşür və əlavə tək rəqəmli sətirlər yaranır)
+    const nextTitle = titleIdx.find((i) => i > ti) ?? rows.length;
+    const block = rows.slice(ti + 1, nextTitle);
+    const byLabel = Object.fromEntries(block.filter((r) => r.items.length > 1).map((r) => [r.items[0], r.items]));
     const cellsOf = (label) => {
       const items = byLabel[label];
       if (!items) throw new Error(`Səhifə ${pageNo}, ${title}: "${label}" sətri yoxdur`);
@@ -184,11 +187,23 @@ function parsePageQtm(pageData, pageNo) {
       if (cells.length !== count) throw new Error(`Səhifə ${pageNo}, ${title}: "${label}" ${cells.length} xana, ${count} gözlənilirdi`);
       return cells;
     };
-    // Sağ tərəfdəki fənn göstəricisi: sətirdə etiketdən sonrakı dəyər
+    // Sağ tərəfdəki fənn göstəricisi: sətirdə etiketdən sonrakı dəyər.
+    // Dəyər xanaya sığmayanda (məs. 220.59) iki sətrə bölünür: "220.5" etiketin üstündə, "9" altında —
+    // onda etiketin sağında, ±12pt hündürlükdə olan tək rəqəmli sətirlər yuxarıdan aşağı birləşdirilir.
     const side = (label) => {
       for (const r of block) {
         const i = r.items.indexOf(label, 1);
-        if (i > 0) return num(r.items[i + 1], `Səhifə ${pageNo}, ${title}, ${label}`);
+        if (i < 0) continue;
+        const where = `Səhifə ${pageNo}, ${title}, ${label}`;
+        if (r.items[i + 1] !== undefined) return num(r.items[i + 1], where);
+        const labelCell = r.cells[i];
+        const parts = block
+          .filter((b) => b.items.length === 1 && /^[0-9.,]+$/.test(b.items[0]))
+          .filter((b) => Math.abs(b.y - labelCell.y) <= 12 && b.cells[0].x > labelCell.x)
+          .sort((a, b) => b.y - a.y)
+          .map((b) => b.items[0]);
+        if (!parts.length) throw new Error(`${where}: dəyər tapılmadı`);
+        return num(parts.join(""), where);
       }
       throw new Error(`Səhifə ${pageNo}, ${title}: "${label}" yoxdur`);
     };
@@ -243,7 +258,8 @@ const parsed = pages.map((p, i) => (isQtmFormat(p) ? parsePageQtm(p, i + 1) : pa
 // Yoxlama: fənn ballarının cəmi ümumi bala, doğru+yanlış+cavabsız sual sayına bərabər olmalıdır
 for (const p of parsed.filter((x) => x.extra)) {
   const sum = p.summary.reduce((s, r) => s + r.bal, 0);
-  if (Math.abs(sum - p.umumiBal) > 0.01) throw new Error(`${p.origIsNomresi}: fənn ballarının cəmi ${sum}, ümumi bal ${p.umumiBal}`);
+  // Fənn balları 2 onluğa yuvarlaqlaşdırılır, ümumi bal isə dəqiq cəmdən — 0.05-ə qədər fərq normaldır
+  if (Math.abs(sum - p.umumiBal) > 0.05) throw new Error(`${p.origIsNomresi}: fənn ballarının cəmi ${sum}, ümumi bal ${p.umumiBal}`);
   for (const r of p.summary) {
     if (r.dogru + r.yanlis + r.cavabsiz !== r.sualSayi) throw new Error(`${p.origIsNomresi} ${r.fenn}: doğru+yanlış+cavabsız ≠ ${r.sualSayi}`);
     const q = p.sections.find((s) => s.title.startsWith(r.fenn)).questions;
